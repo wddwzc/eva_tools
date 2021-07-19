@@ -1,0 +1,5 @@
+scan_context:
+  num_ring: 20
+  num_sector: 60
+  max_radius: 80
+  
