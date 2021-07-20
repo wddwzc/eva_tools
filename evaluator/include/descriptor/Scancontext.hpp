@@ -56,8 +56,8 @@ std::vector<float> eig2stdvec( MatrixXd _eigmat );
 
 class SCManager
 {
-public: 
-    SCManager( ) = default; // reserving data space (of std::vector) could be considered. but the descriptor is lightweight so don't care.
+public:
+    SCManager();
 
     Eigen::MatrixXd makeScancontext( pcl::PointCloud<SCPointType> & _scan_down );
     Eigen::MatrixXd makeRingkeyFromScancontext( Eigen::MatrixXd &_desc );
@@ -70,36 +70,30 @@ public:
     // User-side API
     void makeAndSaveScancontextAndKeys( pcl::PointCloud<SCPointType> & _scan_down );
     std::pair<int, float> detectLoopClosureID( void ); // int: nearest node index, float: relative yaw
-    void setThreshold(double thres) { SC_DIST_THRES = thres; }
-
-    Eigen::MatrixXd makeScancontextL( pcl::PointCloud<SCPointType> & _scan_down );
-    Eigen::MatrixXd makeScancontextR( pcl::PointCloud<SCPointType> & _scan_down );
-    std::pair<int, float> detectLoopClosureIDL( void );
-    std::pair<int, float> detectLoopClosureIDR( void );
 
 public:
     // hyper parameters ()
-    const double LIDAR_HEIGHT = 2.0; // lidar height : add this for simply directly using lidar scan in the lidar local coord (not robot base coord) / if you use robot-coord-transformed lidar scans, just set this as 0.
+    double LIDAR_HEIGHT = 2.0; // lidar height : add this for simply directly using lidar scan in the lidar local coord (not robot base coord) / if you use robot-coord-transformed lidar scans, just set this as 0.
 
-    const int    PC_NUM_RING = 20; // 20 in the original paper (IROS 18)
-    const int    PC_NUM_SECTOR = 60; // 60 in the original paper (IROS 18)
-    const double PC_MAX_RADIUS = 80.0; // 80 meter max in the original paper (IROS 18)
-    const double PC_UNIT_SECTORANGLE = 360.0 / double(PC_NUM_SECTOR);
-    const double PC_UNIT_RINGGAP = PC_MAX_RADIUS / double(PC_NUM_RING);
+    int    PC_NUM_RING = 20; // 20 in the original paper (IROS 18)
+    int    PC_NUM_SECTOR = 60; // 60 in the original paper (IROS 18)
+    double PC_MAX_RADIUS = 80.0; // 80 meter max in the original paper (IROS 18)
+    double PC_UNIT_SECTORANGLE = 360.0 / double(PC_NUM_SECTOR);
+    double PC_UNIT_RINGGAP = PC_MAX_RADIUS / double(PC_NUM_RING);
 
     // tree
-    const int    NUM_EXCLUDE_RECENT = 50; // simply just keyframe gap, but node position distance-based exclusion is ok. 
-    const int    NUM_CANDIDATES_FROM_TREE = 10; // 10 is enough. (refer the IROS 18 paper)
+    int    NUM_EXCLUDE_RECENT = 50; // simply just keyframe gap, but node position distance-based exclusion is ok. 
+    int    NUM_CANDIDATES_FROM_TREE = 10; // 10 is enough. (refer the IROS 18 paper)
 
     // loop thres
     // const double SEARCH_RATIO = 0.1; // for fast comparison, no Brute-force, but search 10 % is okay. // not was in the original conf paper, but improved ver.
-    const double SEARCH_RATIO = 0.5;
+    double SEARCH_RATIO = 0.5;
     // const double SC_DIST_THRES = 0.13; // empirically 0.1-0.2 is fine (rare false-alarms) for 20x60 polar context (but for 0.15 <, DCS or ICP fit score check (e.g., in LeGO-LOAM) should be required for robustness)
     double SC_DIST_THRES = 0.5; // 0.4-0.6 is good choice for using with robust kernel (e.g., Cauchy, DCS) + icp fitness threshold / if not, recommend 0.1-0.15
 
     // config 
-    const int    TREE_MAKING_PERIOD_ = 10; // i.e., remaking tree frequency, to avoid non-mandatory every remaking, to save time cost / in the LeGO-LOAM integration, it is synchronized with the loop detection callback (which is 1Hz) so it means the tree is updated evrey 10 sec. But you can use the smaller value because it is enough fast ~ 5-50ms wrt N.
-    int          tree_making_period_conter = 0;
+    int    TREE_MAKING_PERIOD_ = 10; // i.e., remaking tree frequency, to avoid non-mandatory every remaking, to save time cost / in the LeGO-LOAM integration, it is synchronized with the loop detection callback (which is 1Hz) so it means the tree is updated evrey 10 sec. But you can use the smaller value because it is enough fast ~ 5-50ms wrt N.
+    int    tree_making_period_conter = 0;
 
     // data 
     std::vector<double> polarcontexts_timestamp_; // optional.
@@ -137,7 +131,6 @@ void coreImportTest (void)
     cout << "scancontext lib is successfully imported." << endl;
 } // coreImportTest
 
-
 float rad2deg(float radians)
 {
     return radians * 180.0 / M_PI;
@@ -147,7 +140,6 @@ float deg2rad(float degrees)
 {
     return degrees * M_PI / 180.0;
 }
-
 
 float xy2theta( const float & _x, const float & _y )
 {
@@ -163,7 +155,6 @@ float xy2theta( const float & _x, const float & _y )
     if ( _x >= 0 & _y < 0)
         return 360 - ( (180/M_PI) * atan((-_y) / _x) );
 } // xy2theta
-
 
 MatrixXd circshift( MatrixXd &_mat, int _num_shift )
 {
@@ -187,13 +178,44 @@ MatrixXd circshift( MatrixXd &_mat, int _num_shift )
 
 } // circshift
 
-
 std::vector<float> eig2stdvec( MatrixXd _eigmat )
 {
     std::vector<float> vec( _eigmat.data(), _eigmat.data() + _eigmat.size() );
     return vec;
 } // eig2stdvec
 
+
+
+
+
+
+SCManager::SCManager() {
+    ros::NodeHandle nh;
+    nh.param<double>("/descriptor/scan_context/lidar_height", LIDAR_HEIGHT, 2.0);
+    nh.param<int>("/descriptor/scan_context/num_ring", PC_NUM_RING, 20);
+    nh.param<int>("/descriptor/scan_context/num_sector", PC_NUM_SECTOR, 60);
+    nh.param<double>("/descriptor/scan_context/max_radius", PC_MAX_RADIUS, 80.0);
+    nh.param<double>("/descriptor/scan_context/unit_sector_angle", PC_UNIT_SECTORANGLE, 360.0 / double(PC_NUM_SECTOR));
+    nh.param<double>("/descriptor/scan_context/unit_ring_gap", PC_UNIT_RINGGAP, PC_MAX_RADIUS / double(PC_NUM_RING));
+    // tree
+    nh.param<int>("/descriptor/scan_context/num_exclude_recent", NUM_EXCLUDE_RECENT, 50);
+    nh.param<int>("/descriptor/scan_context/num_candidates_from_tree", NUM_CANDIDATES_FROM_TREE, 10);
+    // loop thres
+    nh.param<double>("/descriptor/scan_context/search_ratio", SEARCH_RATIO, 0.5);
+    nh.param<double>("/descriptor/scan_context/sc_dist_thres", SC_DIST_THRES, 0.5);
+
+    cout << "### scan context parameters ###" << endl;
+    cout << "lidar height: " << LIDAR_HEIGHT << endl;
+    cout << "num ring: " << PC_NUM_RING << endl;
+    cout << "num sector: " << PC_NUM_SECTOR << endl;
+    cout << "max radius: " << PC_MAX_RADIUS << endl;
+    cout << "unit sector angle: " << PC_UNIT_SECTORANGLE << endl;
+    cout << "unit ring gap: " << PC_UNIT_RINGGAP << endl;
+    cout << "num exclude recent: " << NUM_EXCLUDE_RECENT << endl;
+    cout << "num candidates from tree: " << NUM_CANDIDATES_FROM_TREE << endl;
+    cout << "search ratio: " << SEARCH_RATIO << endl;
+    cout << "sc dist thres: " << SC_DIST_THRES << endl;
+}
 
 double SCManager::distDirectSC ( MatrixXd &_sc1, MatrixXd &_sc2 )
 {
@@ -370,28 +392,6 @@ void SCManager::makeAndSaveScancontextAndKeys( pcl::PointCloud<SCPointType> & _s
 
     // cout <<polarcontext_vkeys_.size() << endl;
 
-
-
-    /********************/
-    // Eigen::MatrixXd scL = makeScancontextL(_scan_down);
-    // Eigen::MatrixXd ringkeyL = makeRingkeyFromScancontext( scL );
-    // Eigen::MatrixXd sectorkeyL = makeSectorkeyFromScancontext( scL );
-    // std::vector<float> polarcontext_invkey_vecL = eig2stdvec( ringkeyL );
-    // polarcontexts_L.push_back( scL ); 
-    // polarcontext_invkeys_L.push_back( ringkeyL );
-    // polarcontext_vkeys_L.push_back( sectorkeyL );
-    // polarcontext_invkeys_mat_L.push_back( polarcontext_invkey_vecL );
-
-    // Eigen::MatrixXd scR = makeScancontextL(_scan_down);
-    // Eigen::MatrixXd ringkeyR = makeRingkeyFromScancontext( scR );
-    // Eigen::MatrixXd sectorkeyR = makeSectorkeyFromScancontext( scR );
-    // std::vector<float> polarcontext_invkey_vecR = eig2stdvec( ringkeyR );
-    // polarcontexts_R.push_back( scR ); 
-    // polarcontext_invkeys_R.push_back( ringkeyR );
-    // polarcontext_vkeys_R.push_back( sectorkeyR );
-    // polarcontext_invkeys_mat_R.push_back( polarcontext_invkey_vecR );
-    /********************/
-
 } // SCManager::makeAndSaveScancontextAndKeys
 
 
@@ -489,335 +489,6 @@ std::pair<int, float> SCManager::detectLoopClosureID ( void )
 } // SCManager::detectLoopClosureID
 
 // } // namespace SC2
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-MatrixXd SCManager::makeScancontextL( pcl::PointCloud<SCPointType> & _scan_down )
-{
-    TicToc t_making_desc;
-
-    int num_pts_scan_down = _scan_down.points.size();
-
-    // main
-    const int NO_POINT = -1000;
-    MatrixXd desc = NO_POINT * MatrixXd::Ones(PC_NUM_RING, PC_NUM_SECTOR);
-
-    SCPointType pt;
-    float azim_angle, azim_range; // wihtin 2d plane
-    int ring_idx, sctor_idx;
-    for (int pt_idx = 0; pt_idx < num_pts_scan_down; pt_idx++)
-    {
-        pt.x = _scan_down.points[pt_idx].x + offset_x; 
-        pt.y = _scan_down.points[pt_idx].y + offset_y;
-        pt.z = _scan_down.points[pt_idx].z + LIDAR_HEIGHT; // naive adding is ok (all points should be > 0).
-
-        // xyz to ring, sector
-        azim_range = sqrt(pt.x * pt.x + pt.y * pt.y);
-        azim_angle = xy2theta(pt.x, pt.y);
-
-        // if range is out of roi, pass
-        if( azim_range > PC_MAX_RADIUS )
-            continue;
-
-        ring_idx = std::max( std::min( PC_NUM_RING, int(ceil( (azim_range / PC_MAX_RADIUS) * PC_NUM_RING )) ), 1 );
-        sctor_idx = std::max( std::min( PC_NUM_SECTOR, int(ceil( (azim_angle / 360.0) * PC_NUM_SECTOR )) ), 1 );
-
-        // taking maximum z 
-        if ( desc(ring_idx-1, sctor_idx-1) < pt.z ) // -1 means cpp starts from 0
-            desc(ring_idx-1, sctor_idx-1) = pt.z; // update for taking maximum value at that bin
-    }
-
-    // reset no points to zero (for cosine dist later)
-    for ( int row_idx = 0; row_idx < desc.rows(); row_idx++ )
-        for ( int col_idx = 0; col_idx < desc.cols(); col_idx++ )
-            if( desc(row_idx, col_idx) == NO_POINT )
-                desc(row_idx, col_idx) = 0;
-
-    t_making_desc.toc("PolarContext making");
-
-    return desc;
-} // SCManager::makeScancontext
-
-
-MatrixXd SCManager::makeScancontextR( pcl::PointCloud<SCPointType> & _scan_down )
-{
-    TicToc t_making_desc;
-
-    int num_pts_scan_down = _scan_down.points.size();
-
-    // main
-    const int NO_POINT = -1000;
-    MatrixXd desc = NO_POINT * MatrixXd::Ones(PC_NUM_RING, PC_NUM_SECTOR);
-
-    SCPointType pt;
-    float azim_angle, azim_range; // wihtin 2d plane
-    int ring_idx, sctor_idx;
-    for (int pt_idx = 0; pt_idx < num_pts_scan_down; pt_idx++)
-    {
-        pt.x = _scan_down.points[pt_idx].x - offset_x; 
-        pt.y = _scan_down.points[pt_idx].y - offset_y;
-        pt.z = _scan_down.points[pt_idx].z + LIDAR_HEIGHT; // naive adding is ok (all points should be > 0).
-
-        // xyz to ring, sector
-        azim_range = sqrt(pt.x * pt.x + pt.y * pt.y);
-        azim_angle = xy2theta(pt.x, pt.y);
-
-        // if range is out of roi, pass
-        if( azim_range > PC_MAX_RADIUS )
-            continue;
-
-        ring_idx = std::max( std::min( PC_NUM_RING, int(ceil( (azim_range / PC_MAX_RADIUS) * PC_NUM_RING )) ), 1 );
-        sctor_idx = std::max( std::min( PC_NUM_SECTOR, int(ceil( (azim_angle / 360.0) * PC_NUM_SECTOR )) ), 1 );
-
-        // taking maximum z 
-        if ( desc(ring_idx-1, sctor_idx-1) < pt.z ) // -1 means cpp starts from 0
-            desc(ring_idx-1, sctor_idx-1) = pt.z; // update for taking maximum value at that bin
-    }
-
-    // reset no points to zero (for cosine dist later)
-    for ( int row_idx = 0; row_idx < desc.rows(); row_idx++ )
-        for ( int col_idx = 0; col_idx < desc.cols(); col_idx++ )
-            if( desc(row_idx, col_idx) == NO_POINT )
-                desc(row_idx, col_idx) = 0;
-
-    t_making_desc.toc("PolarContext making");
-
-    return desc;
-} // SCManager::makeScancontext
-
-
-std::pair<int, float> SCManager::detectLoopClosureIDL ( void )
-{
-    int loop_id { -1 }; // init with -1, -1 means no loop (== LeGO-LOAM's variable "closestHistoryFrameID")
-
-    auto curr_key = polarcontext_invkeys_mat_L.back(); // current observation (query)
-    auto curr_desc = polarcontexts_L.back(); // current observation (query)
-
-    /* 
-     * step 1: candidates from ringkey tree_
-     */
-    if( polarcontext_invkeys_mat_.size() < NUM_EXCLUDE_RECENT + 1)
-    {
-        std::pair<int, float> result {loop_id, 0.0};
-        return result; // Early return 
-    }
-
-    // tree_ reconstruction (not mandatory to make everytime)
-    if( tree_making_period_conter % TREE_MAKING_PERIOD_ == 0) // to save computation cost
-    {
-        TicToc t_tree_construction;
-
-        polarcontext_invkeys_to_search_.clear();
-        polarcontext_invkeys_to_search_.assign( polarcontext_invkeys_mat_.begin(), polarcontext_invkeys_mat_.end() - NUM_EXCLUDE_RECENT ) ;
-
-        polarcontext_tree_.reset(); 
-        polarcontext_tree_ = std::make_unique<InvKeyTree>(PC_NUM_RING /* dim */, polarcontext_invkeys_to_search_, 10 /* max leaf */ );
-        // tree_ptr_->index->buildIndex(); // inernally called in the constructor of InvKeyTree (for detail, refer the nanoflann and KDtreeVectorOfVectorsAdaptor)
-        t_tree_construction.toc("Tree construction");
-    }
-    tree_making_period_conter = tree_making_period_conter + 1;
-
-    double min_dist = 10000000; // init with somthing large
-    int nn_align = 0;
-    int nn_idx = 0;
-
-    // knn search
-    std::vector<size_t> candidate_indexes( NUM_CANDIDATES_FROM_TREE ); 
-    std::vector<float> out_dists_sqr( NUM_CANDIDATES_FROM_TREE );
-
-    TicToc t_tree_search;
-    nanoflann::KNNResultSet<float> knnsearch_result( NUM_CANDIDATES_FROM_TREE );
-    knnsearch_result.init( &candidate_indexes[0], &out_dists_sqr[0] );
-    polarcontext_tree_->index->findNeighbors( knnsearch_result, &curr_key[0] /* query */, nanoflann::SearchParams(50) ); 
-    t_tree_search.toc("Tree search");
-
-    /* 
-     *  step 2: pairwise distance (find optimal columnwise best-fit using cosine distance)
-     */
-    TicToc t_calc_dist;
-    for ( int candidate_iter_idx = 0; candidate_iter_idx < NUM_CANDIDATES_FROM_TREE; candidate_iter_idx++ )
-    {
-        MatrixXd polarcontext_candidate = polarcontexts_[ candidate_indexes[candidate_iter_idx] ];
-        std::pair<double, int> sc_dist_result = distanceBtnScanContext( curr_desc, polarcontext_candidate ); 
-        
-        double candidate_dist = sc_dist_result.first;
-        int candidate_align = sc_dist_result.second;
-
-        if( candidate_dist < min_dist )
-        {
-            min_dist = candidate_dist;
-            nn_align = candidate_align;
-
-            nn_idx = candidate_indexes[candidate_iter_idx];
-        }
-    }
-    t_calc_dist.toc("Distance calc");
-
-    /* 
-     * loop threshold check
-     */
-    if( min_dist < SC_DIST_THRES )
-    {
-        loop_id = nn_idx; 
-    
-        // std::cout.precision(3); 
-        // cout << "[Loop found] Nearest distance: " << min_dist << " btn " << polarcontexts_.size()-1 << " and " << nn_idx << "." << endl;
-        // cout << "[Loop found] yaw diff: " << nn_align * PC_UNIT_SECTORANGLE << " deg." << endl;
-    }
-    // else
-    // {
-    //     std::cout.precision(3); 
-    //     cout << "[Not loop] Nearest distance: " << min_dist << " btn " << polarcontexts_.size()-1 << " and " << nn_idx << "." << endl;
-    //     cout << "[Not loop] yaw diff: " << nn_align * PC_UNIT_SECTORANGLE << " deg." << endl;
-    // }
-
-    // To do: return also nn_align (i.e., yaw diff)
-    float yaw_diff_rad = deg2rad(nn_align * PC_UNIT_SECTORANGLE);
-    std::pair<int, float> result {loop_id, yaw_diff_rad};
-
-    return result;
-
-} // SCManager::detectLoopClosureID
-
-std::pair<int, float> SCManager::detectLoopClosureIDR ( void )
-{
-    int loop_id { -1 }; // init with -1, -1 means no loop (== LeGO-LOAM's variable "closestHistoryFrameID")
-
-    auto curr_key = polarcontext_invkeys_mat_R.back(); // current observation (query)
-    auto curr_desc = polarcontexts_R.back(); // current observation (query)
-
-    /* 
-     * step 1: candidates from ringkey tree_
-     */
-    if( polarcontext_invkeys_mat_.size() < NUM_EXCLUDE_RECENT + 1)
-    {
-        std::pair<int, float> result {loop_id, 0.0};
-        return result; // Early return 
-    }
-
-    // tree_ reconstruction (not mandatory to make everytime)
-    if( tree_making_period_conter % TREE_MAKING_PERIOD_ == 0) // to save computation cost
-    {
-        TicToc t_tree_construction;
-
-        polarcontext_invkeys_to_search_.clear();
-        polarcontext_invkeys_to_search_.assign( polarcontext_invkeys_mat_.begin(), polarcontext_invkeys_mat_.end() - NUM_EXCLUDE_RECENT ) ;
-
-        polarcontext_tree_.reset(); 
-        polarcontext_tree_ = std::make_unique<InvKeyTree>(PC_NUM_RING /* dim */, polarcontext_invkeys_to_search_, 10 /* max leaf */ );
-        // tree_ptr_->index->buildIndex(); // inernally called in the constructor of InvKeyTree (for detail, refer the nanoflann and KDtreeVectorOfVectorsAdaptor)
-        t_tree_construction.toc("Tree construction");
-    }
-    tree_making_period_conter = tree_making_period_conter + 1;
-        
-    double min_dist = 10000000; // init with somthing large
-    int nn_align = 0;
-    int nn_idx = 0;
-
-    // knn search
-    std::vector<size_t> candidate_indexes( NUM_CANDIDATES_FROM_TREE ); 
-    std::vector<float> out_dists_sqr( NUM_CANDIDATES_FROM_TREE );
-
-    TicToc t_tree_search;
-    nanoflann::KNNResultSet<float> knnsearch_result( NUM_CANDIDATES_FROM_TREE );
-    knnsearch_result.init( &candidate_indexes[0], &out_dists_sqr[0] );
-    polarcontext_tree_->index->findNeighbors( knnsearch_result, &curr_key[0] /* query */, nanoflann::SearchParams(50) ); 
-    t_tree_search.toc("Tree search");
-
-    /* 
-     *  step 2: pairwise distance (find optimal columnwise best-fit using cosine distance)
-     */
-    TicToc t_calc_dist;   
-    for ( int candidate_iter_idx = 0; candidate_iter_idx < NUM_CANDIDATES_FROM_TREE; candidate_iter_idx++ )
-    {
-        MatrixXd polarcontext_candidate = polarcontexts_[ candidate_indexes[candidate_iter_idx] ];
-        std::pair<double, int> sc_dist_result = distanceBtnScanContext( curr_desc, polarcontext_candidate ); 
-        
-        double candidate_dist = sc_dist_result.first;
-        int candidate_align = sc_dist_result.second;
-
-        if( candidate_dist < min_dist )
-        {
-            min_dist = candidate_dist;
-            nn_align = candidate_align;
-
-            nn_idx = candidate_indexes[candidate_iter_idx];
-        }
-    }
-    t_calc_dist.toc("Distance calc");
-
-    /* 
-     * loop threshold check
-     */
-    if( min_dist < SC_DIST_THRES )
-    {
-        loop_id = nn_idx; 
-    
-        // std::cout.precision(3); 
-        // cout << "[Loop found] Nearest distance: " << min_dist << " btn " << polarcontexts_.size()-1 << " and " << nn_idx << "." << endl;
-        // cout << "[Loop found] yaw diff: " << nn_align * PC_UNIT_SECTORANGLE << " deg." << endl;
-    }
-    // else
-    // {
-    //     std::cout.precision(3); 
-    //     cout << "[Not loop] Nearest distance: " << min_dist << " btn " << polarcontexts_.size()-1 << " and " << nn_idx << "." << endl;
-    //     cout << "[Not loop] yaw diff: " << nn_align * PC_UNIT_SECTORANGLE << " deg." << endl;
-    // }
-
-    // To do: return also nn_align (i.e., yaw diff)
-    float yaw_diff_rad = deg2rad(nn_align * PC_UNIT_SECTORANGLE);
-    std::pair<int, float> result {loop_id, yaw_diff_rad};
-
-    return result;
-
-} // SCManager::detectLoopClosureID
 
 
 #endif

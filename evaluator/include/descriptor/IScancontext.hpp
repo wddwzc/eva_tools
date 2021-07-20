@@ -34,17 +34,7 @@
 
 
 //#define INTEGER_INTENSITY
-
-//IF TRAVELLED DISTANCE IS LESS THAN THIS VALUE, SKIP FOR PLACE RECOGNTION
-#define SKIP_NEIBOUR_DISTANCE 20.0
-//how much error will odom generate per frame 
-#define INFLATION_COVARIANCE 0.03
-
-//define threshold for loop closure detection
-#define GEOMETRY_THRESHOLD 0.67
-#define INTENSITY_THRESHOLD 0.91
-
-typedef cv::Mat ISCDescriptor; 
+typedef cv::Mat ISCDescriptor;
 
 
 class ISCManager
@@ -59,15 +49,24 @@ public:
     
     int current_frame_id;
     std::vector<int> matched_frame_id;
+
 private:
+    bool INTEGER_INTENSITY;
     int rings = 20;
     int sectors = 90;
     double ring_step=0.0;
     double sector_step=0.0;
-    double max_dis = 60; 
+    double max_dis = 60;
+
+    //IF TRAVELLED DISTANCE IS LESS THAN THIS VALUE, SKIP FOR PLACE RECOGNTION
+    double SKIP_NEIBOUR_DISTANCE = 20.0;
+    //how much error will odom generate per frame 
+    double INFLATION_COVARIANCE = 0.03;
+    //define threshold for loop closure detection
+    double GEOMETRY_THRESHOLD = 0.67;
+    double INTENSITY_THRESHOLD = 0.91;
 
     std::vector<cv::Vec3b> color_projection;
-
     
     pcl::PointCloud<pcl::PointXYZI>::Ptr current_point_cloud;
     pcl::PointCloud<pcl::PointXYZI>::Ptr test_pc;
@@ -89,14 +88,19 @@ private:
 
 ISCManager::ISCManager()
 {
-    int sector_width = 60;
-    int ring_height = 60;
-    double max_dis= 40.0;
+    ros::NodeHandle nh;
+    nh.param<bool>("/descriptor/intensity_scan_context/integer_intensity", INTEGER_INTENSITY, false);
+    nh.param<int>("/descriptor/intensity_scan_context/num_ring", rings, 20);
+    nh.param<int>("/descriptor/intensity_scan_context/num_sector", sectors, 90);
+    nh.param<double>("/descriptor/intensity_scan_context/ring_step", ring_step, 0.0);
+    nh.param<double>("/descriptor/intensity_scan_context/sector_step", sector_step, 0.0);
+    nh.param<double>("/descriptor/intensity_scan_context/max_dis", max_dis, 60);
 
-    nh.getParam("/sector_width", sector_width);
-    nh.getParam("/ring_height", ring_height);
-    //nh.getParam("/max_dis", max_dis);
-    nh.getParam("/scan_period", scan_period);
+    nh.param<double>("/descriptor/intensity_scan_context/skip_neibour_distance", SKIP_NEIBOUR_DISTANCE, 20.0);
+    nh.param<double>("/descriptor/intensity_scan_context/inflation_covariance", INFLATION_COVARIANCE, 0.03);
+    nh.param<double>("/descriptor/intensity_scan_context/geometry_threshold", GEOMETRY_THRESHOLD, 0.67);
+    nh.param<double>("/descriptor/intensity_scan_context/intensity_threshold", INTENSITY_THRESHOLD, 0.91);
+
 }
 
 void ISCManager::init_param(int rings_in, int sectors_in, double max_dis_in){
@@ -160,11 +164,13 @@ ISCDescriptor ISCManager::calculate_isc(const pcl::PointCloud<pcl::PointXYZI>::P
             continue;
         if(sector_id>=sectors)
             continue;
-#ifndef INTEGER_INTENSITY
-        int intensity_temp = (int) (255*filtered_pointcloud->points[i].intensity);
-#else
-        int intensity_temp = (int) (filtered_pointcloud->points[i].intensity);
-#endif
+        
+        int intensity_temp;
+        if (INTEGER_INTENSITY)
+            intensity_temp = (int) (filtered_pointcloud->points[i].intensity);
+        else
+            intensity_temp = (int) (255*filtered_pointcloud->points[i].intensity);
+
         if(isc.at<unsigned char>(ring_id,sector_id)<intensity_temp)
             isc.at<unsigned char>(ring_id,sector_id)=intensity_temp;
 

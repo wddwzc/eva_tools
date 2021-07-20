@@ -1,5 +1,33 @@
-scan_context:
-  num_ring: 20
-  num_sector: 60
-  max_radius: 80
-  
+descriptor:
+    scan_context:
+        lidar_height: 2.0   # add this for simply directly using lidar scan in the lidar local coord (not robot base coord) / if you use robot-coord-transformed lidar scans, just set this as 0.
+        num_ring: 20        # 20 in the original paper (IROS 18)
+        num_sector: 60      # 60 in the original paper (IROS 18)
+        max_radius: 80      # 80 meter max in the original paper (IROS 18)
+        unit_sector_angle: 6
+        unit_ring_gap: 4
+        # tree
+        num_exclude_recent: 50          # simply just keyframe gap, but node position distance-based exclusion is ok. 
+        num_candidates_from_tree: 10    # 10 is enough. (refer the IROS 18 paper)
+        # loop threshold
+        search_ratio: 0.5   # for fast comparison, no Brute-force, but search 10 % is okay. // not was in the original conf paper, but improved ver.
+        sc_dist_thres: 0.5  # 0.4-0.6 is good choice for using with robust kernel (e.g., Cauchy, DCS) + icp fitness threshold / if not, recommend 0.1-0.15
+                            # empirically 0.1-0.2 is fine (rare false-alarms) for 20x60 polar context (but for 0.15 <, DCS or ICP fit score check (e.g., in LeGO-LOAM) should be required for robustness)
+
+    intensity_scan_context:
+        integer_intensity: false
+        num_ring: 20
+        num_sector: 90
+        ring_step: 0.0
+        sector_step: 0.0
+        max_dis: 60
+        # threshold
+        skip_neibour_distance: 20.0 # IF TRAVELLED DISTANCE IS LESS THAN THIS VALUE, SKIP FOR PLACE RECOGNTION
+        inflation_covariance: 0.03  # how much error will odom generate per frame 
+        geometry_threshold: 0.67    # define threshold for loop closure detection
+        intensity_threshold: 0.91
+
+    semantic_scan_context:
+        num_ring: 20
+
+

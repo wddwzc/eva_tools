@@ -23,7 +23,6 @@ private:
     // Parameter
     string descriptorType;
     double searchRadius;
-    double disThreshold;
 
     pcl::PointCloud<PointType>::Ptr pointCloudAll;
     pcl::PointCloud<pcl::PointXYZ>::Ptr poseCloud;
@@ -46,6 +45,7 @@ private:
     double TP, TN, FP, FN, precision, recall;
 
     SCManager scManager;
+    ISCManager iscManager;
 
 public:
 
@@ -68,14 +68,10 @@ public:
         FN = 0;
 
         ros::NodeHandle nh("~");
-        nh.param<string>("descriptor_type", descriptorType, "sc");
+        nh.param<string>("descriptor_type", descriptorType, "scan_context");
         nh.param<double>("search_radius", searchRadius, 5.0);
-        nh.param<double>("distance_threshold", disThreshold, 0.5);
         cout << "descriptor type: " << descriptorType << endl;
         cout << "search radius: " << searchRadius << endl;
-        cout << "distance threshold: " << disThreshold << endl;
-
-        scManager.setThreshold(disThreshold);
     }
 
     ~LCEvaluator() {
@@ -110,6 +106,12 @@ public:
             }
         }
 
+        // iscManager.loopDetection(pointcloud_in, odom_in);
+        
+        // for(int i=0;i<(int)iscGeneration.matched_frame_id.size();i++){
+        //     loop.matched_id.push_back(iscGeneration.matched_frame_id[i]);
+        // }
+
         // 构建描述子
         make_recorder.recordStart();
         scManager.makeAndSaveScancontextAndKeys(laserCloudAll);
@@ -118,10 +120,6 @@ public:
         // 闭环检测
         match_recorder.recordStart();
         auto detectResult = scManager.detectLoopClosureID(); // first: nn index, second: yaw diff
-        /*************************************/
-        // auto detectResultL = scManager.detectLoopClosureIDL();
-        // auto detectResultR = scManager.detectLoopClosureIDR();
-        /*************************************/
         timesMatch.push_back(match_recorder.calculateDuration());
 
 
@@ -134,17 +132,6 @@ public:
             if (poseCloud->size() -  detectResult.second > 200)
                 detectLoopClosure = true;
         }
-
-        /*************************************/
-        // if (detectResultL.first != -1) {
-        //     if (poseCloud->size() -  detectResult.second > 200)
-        //         detectLoopClosure = true;
-        // }
-        // if (detectResultR.first != -1) {
-        //     if (poseCloud->size() -  detectResult.second > 200)
-        //         detectLoopClosure = true;
-        // }
-        /*************************************/
 
         if (isLoopClosure) {
             if (detectLoopClosure) {

@@ -1,18 +1,15 @@
 <launch>
 
+    <rosparam command="load" file="$(find my_evaluator)/config/descriptor.yaml"/>
+
     <node pkg="my_evaluator" type="evaluate_loop_closure"    name="evaluate_loop_closure"  output="screen">
         
-        <!--
-        <param name="dataset_folder" 		type="string" 	value="/home/wzc/Data/kitti/data_odometry_laser/"/>
-        -->
-
         <param name="dataset_folder" 		type="string" 	value="/media/wzc/新加卷/DataSet/KITTI/"/>
         
         <param name="sequence_number" 		type="string" 	value="00"/>
-        <param name="scan_context" 			type="string" 	value="scan_context"/>  <!-- m2dp  mine -->
+        <param name="descriptor_type" 		type="string" 	value="scan_context"/>  <!-- m2dp  mine -->
         <param name="search_radius"         type="double"   value="10.0"/>
-
-        <param name="distance_threshold"    type="double"   value="0.5"/>
+        
     </node>
 
 </launch>
