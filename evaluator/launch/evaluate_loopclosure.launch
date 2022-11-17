@@ -4,12 +4,12 @@
 
     <node pkg="my_evaluator" type="evaluate_loop_closure"    name="evaluate_loop_closure"  output="screen">
         
-        <param name="dataset_folder" 		type="string" 	value="/media/wzc/新加卷/DataSet/KITTI/"/>
+        <param name="dataset_folder" 		type="string" 	value="/media/wzc/EC76E7FE1C7CAFC8/DataSet/KITTI/"/>
         
         <param name="sequence_number" 		type="string" 	value="00"/>
-        <param name="descriptor_type" 		type="string" 	value="scan_context"/>  <!-- m2dp  mine -->
-        <param name="search_radius"         type="double"   value="10.0"/>
-        
+        <param name="descriptor_type" 		type="string" 	value="scan_context"/>  <!-- scan_context intensity_scan_context  m2dp  mine -->
+        <param name="search_radius"         type="double"   value="8.0"/>
+
     </node>
 
 </launch>

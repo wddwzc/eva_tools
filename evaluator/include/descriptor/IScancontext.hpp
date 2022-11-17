@@ -1,6 +1,8 @@
 #ifndef _ISC_GENERATION_CLASS_H_
 #define _ISC_GENERATION_CLASS_H_
 
+#include "utility.h"
+
 #include <iostream>
 #include <vector>
 #include <string>
@@ -234,11 +236,10 @@ void ISCManager::loopDetection(const pcl::PointCloud<pcl::PointXYZI>::Ptr& curre
 
         }
     }
-    if(best_matched_id!=0){
+    if(best_matched_id != 0) {
         matched_frame_id.push_back(best_matched_id);
         //ROS_INFO("received loop closure candidate: current: %d, history %d, total_score%f",current_frame_id,best_matched_id,best_score);
     }
-
 
 }
 

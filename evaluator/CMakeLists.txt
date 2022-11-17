@@ -28,6 +28,7 @@ find_package(GTSAM REQUIRED QUIET)
 find_package(PCL REQUIRED QUIET)
 find_package(OpenCV REQUIRED QUIET)
 find_package(Eigen3 REQUIRED)
+find_package (yaml-cpp REQUIRED)
 
 catkin_package(
   INCLUDE_DIRS include
@@ -42,6 +43,7 @@ include_directories(
 	${OpenCV_INCLUDE_DIRS}
 	${GTSAM_INCLUDE_DIR}
   # ${EIGEN3_INCLUDE_DIR}
+  ${YAML_CPP_INCLUDE_DIR}
 )
 
 link_directories(
@@ -52,7 +54,7 @@ link_directories(
 )
 
 add_executable(evaluate_loop_closure src/evaluateLC.cpp)
-target_link_libraries(evaluate_loop_closure ${catkin_LIBRARIES} ${PCL_LIBRARIES} ${OpenCV_LIBRARIES} Eigen3::Eigen)
+target_link_libraries(evaluate_loop_closure ${catkin_LIBRARIES} ${PCL_LIBRARIES} ${OpenCV_LIBRARIES} Eigen3::Eigen ${YAML_CPP_LIBRARIES})
 
 add_executable(generate_map src/generateMap.cpp)
 target_link_libraries(generate_map ${catkin_LIBRARIES} ${PCL_LIBRARIES} ${OpenCV_LIBRARIES} Eigen3::Eigen)

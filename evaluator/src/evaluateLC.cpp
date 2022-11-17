@@ -46,6 +46,8 @@ private:
 
     SCManager scManager;
     ISCManager iscManager;
+    SSC ssc;
+    // "/home/wzc/ros_ws/tools_ws/src/eva_tools/evaluator/config/config_kitti.yaml"
 
 public:
 
@@ -90,7 +92,7 @@ public:
         return sum / data.size();
     }
 
-    vector<double> evaluate(pcl::PointCloud<PointXYZIL> &laserCloudAll, Eigen::Vector3d& t, float timestamp) {
+    vector<double> evaluate(pcl::PointCloud<PointXYZIL>::Ptr &laserCloudAll, Eigen::Vector3d& t, float timestamp) {
         // 判断是否存在闭环
         bool isLoopClosure = false;
         pcl::PointXYZ cur_pose(t[0], t[1], t[2]);
@@ -106,22 +108,40 @@ public:
             }
         }
 
-        // iscManager.loopDetection(pointcloud_in, odom_in);
+        std::pair<int, float> detectResult;
+        if (descriptorType == "scan_context") {
+            // 构建描述子
+            make_recorder.recordStart();
+            scManager.makeAndSaveScancontextAndKeys(*laserCloudAll);
+            timesMake.push_back(make_recorder.calculateDuration());
+
+            // 闭环检测
+            match_recorder.recordStart();
+            detectResult = scManager.detectLoopClosureID(); // first: nn index, second: yaw diff
+            timesMatch.push_back(match_recorder.calculateDuration());
+        }
+        else if (descriptorType == "intensity_scan_context") {
+            pcl::PointCloud<pcl::PointXYZI>::Ptr laserCloudXYZI(new pcl::PointCloud<pcl::PointXYZI>());
+            for (auto &p : laserCloudAll->points) {
+                pcl::PointXYZI point;
+                point.x = p.x;
+                point.y = p.y;
+                point.z = p.z;
+                point.intensity = p.intensity;
+                laserCloudXYZI->push_back(point);
+            }
+            Eigen::Isometry3d T1 = Eigen::Isometry3d::Identity();
+            T1(0,3) = t[0];
+            T1(1,3) = t[1];
+            T1(2,3) = t[2];
+            iscManager.loopDetection(laserCloudXYZI, T1);
+            for(int i = 0; i < (int)iscManager.matched_frame_id.size(); i++){
+                detectResult.first = iscManager.matched_frame_id[i];
+                detectResult.second = 0.0;
+            }
+            
+        }
         
-        // for(int i=0;i<(int)iscGeneration.matched_frame_id.size();i++){
-        //     loop.matched_id.push_back(iscGeneration.matched_frame_id[i]);
-        // }
-
-        // 构建描述子
-        make_recorder.recordStart();
-        scManager.makeAndSaveScancontextAndKeys(laserCloudAll);
-        timesMake.push_back(make_recorder.calculateDuration());
-
-        // 闭环检测
-        match_recorder.recordStart();
-        auto detectResult = scManager.detectLoopClosureID(); // first: nn index, second: yaw diff
-        timesMatch.push_back(match_recorder.calculateDuration());
-
 
         pcl::PointXYZ temp_p = poseCloud->points[detectResult.second];
         temp_p.z += 1.0;
@@ -129,7 +149,7 @@ public:
 
         bool detectLoopClosure = false;
         if (detectResult.first != -1) {
-            if (poseCloud->size() -  detectResult.second > 200)
+            if (poseCloud->size() -  detectResult.first > 200)
                 detectLoopClosure = true;
         }
 
@@ -296,7 +316,7 @@ int main(int argc, char** argv)
                         << std::setfill('0') << std::setw(6) << line_num << ".label";
         std:vector<uint> label_data = read_label_data(label_data_path.str());
 
-        pcl::PointCloud<PointXYZIL> laser_cloud;
+        pcl::PointCloud<PointXYZIL>::Ptr laser_cloud(new pcl::PointCloud<PointXYZIL>());
         for (std::size_t i = 0; i < lidar_data.size() / 4; ++i)
         {
             PointXYZIL point;
@@ -310,11 +330,11 @@ int main(int argc, char** argv)
 
             point.intensity = lidar_data[i * 4 + 3] * rate;
             point.label = label_data[i] & 0xffff;
-            laser_cloud.push_back(point);
+            laser_cloud->push_back(point);
         }
 
         sensor_msgs::PointCloud2 laser_cloud_msg;
-        pcl::toROSMsg(laser_cloud, laser_cloud_msg);
+        pcl::toROSMsg(*laser_cloud, laser_cloud_msg);
         laser_cloud_msg.header.stamp = ros::Time().fromSec(timestamp);
         // laser_cloud_msg.header.stamp = ros::Time::now();
         laser_cloud_msg.header.frame_id = "/base_link";
@@ -322,15 +342,15 @@ int main(int argc, char** argv)
 
         line_num++;
 
-        vector<double> result = evaluator.evaluate(laser_cloud, t, timestamp);
+        // vector<double> result = evaluator.evaluate(laser_cloud, t, timestamp);
         
-        cout << "scan: " << line_num << "    " << "totally " << laser_cloud.size() << " points.   "
-            << "make_time: " << result[4] << "ms  match_time: " << result[5] << endl;
+        // cout << "scan: " << line_num << "    " << "totally " << laser_cloud->size() << " points.   "
+        //     << "make_time: " << result[4] << "ms  match_time: " << result[5] << endl;
 
-        // cout << "scan: " << line_num << "    " << "totally " << laser_cloud.size() << " points.   " << endl;
+        cout << "scan: " << line_num << "    " << "totally " << laser_cloud->size() << " points.   " << endl;
 
         // usleep(20000);
-        // getchar();
+        getchar();
     }
 
     return 0;
